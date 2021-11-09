@@ -1,5 +1,6 @@
 <?php
 $detailId = isset($_REQUEST["detail_id"])?$_REQUEST["detail_id"]:"";
+$polygon = [];
 ?>
 <div class="container mt-3">
     <?php
@@ -20,6 +21,10 @@ $detailId = isset($_REQUEST["detail_id"])?$_REQUEST["detail_id"]:"";
                 </tr>
                 <?php
                 foreach ($listData as $key => $data) {
+                    $polygontemp = [];
+                    $polygontemp["lat"] = (double)$data['latitude'];
+                    $polygontemp["lng"] = (double)$data['longitude'];
+                    $polygon[] = $polygontemp;
                     ?>
                     <tr class="bg-default">
                         <td>Data <?php echo $key+1?></td>
@@ -32,74 +37,62 @@ $detailId = isset($_REQUEST["detail_id"])?$_REQUEST["detail_id"]:"";
         <div id="map"></div>
 
         <script>
-            function initMap() {
-                const cairo = { lat: 30.064742, lng: 31.249509 };
-                const map = new google.maps.Map(document.getElementById("map"), {
-                    scaleControl: true,
-                    center: cairo,
-                    zoom: 10,
-                });
-                const infowindow = new google.maps.InfoWindow();
-                infowindow.setContent("<b>القاهرة</b>");
-                const marker = new google.maps.Marker({ map, position: cairo });
-                marker.addListener("click", () => {
-                    infowindow.open(map, marker);
-                });
+        function initMap() {
+            const myLatLng = { lat: -1.625758, lng: -247.777179 };
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 5,
+                center: myLatLng,
+            });
+            <?php
+
+            foreach ($listData as $key => $data) {
+                ?>
+                 var icon = {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 5,
+                    fillColor: "#F00",
+                    fillOpacity: 0.4,
+                    strokeWeight: 0.4
+                };
+                var content = '<?php echo "Data ". ($key+1);?>';
+                var title = '<?php echo "Data ". ($key+1);?>';
+                var latlong = { lat: <?php echo $data['latitude'];?>, lng: <?php echo $data['longitude'];?> };
+                addMarker(latlong, map, content, title, icon);
+                <?php
             }
-            Highcharts.chart('scatter', {
-            chart: {
-                type: 'scatter',
-            },
-            title: {
-                text: 'Preview Data'
-            },
-            subtitle: {
-                text: ''
-            },
-            xAxis: {
-                title: {
-                    enabled: true,
-                    text: 'Latitude'
-                },
-                startOnTick: true,
-                endOnTick: true,
-                showLastLabel: true
-            },
-            yAxis: {
-                title: {
-                    text: 'Longitude'
-                }
-            },
-            legend: {
-                align: 'center',
-                verticalAlign: 'bottom',
-            },
-            plotOptions: {
-                scatter: {
-                    marker: {
-                        radius: 5,
-                        states: {
-                            hover: {
-                                enabled: true,
-                                lineColor: 'rgb(100,100,100)'
-                            }
-                        }
-                    },
-                    states: {
-                        hover: {
-                            marker: {
-                                enabled: false
-                            }
-                        }
-                    },
-                    tooltip: {
-                        headerFormat: '<b>{series.name}</b><br>',
-                        pointFormat: '{point.x} latitude, {point.y} longitude'
-                    }
-                }
-            },
-            series: <?php echo json_encode($chartData);?>
-        });
+            ?>
+        }
+        var mapsmarker;
+        function addMarker(location, map, content, title, icon) {
+            var triangleCoords = <?php echo json_encode($polygon);?>;
+
+
+            var marker = new google.maps.Marker({
+                position: location,
+                title: title,
+                content: content,
+                icon: icon,
+                map: map
+            });
+            var infowindow = new google.maps.InfoWindow({
+                content: content,
+                position: mapsmarker
+            });
+            marker.addListener('click', function() {
+            // tampilkan info window di atas marker
+                infowindow.open(map, marker);
+            });
+            /*const bermudaTriangle = new google.maps.Polygon({
+                paths: triangleCoords,
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+                fillColor: "#FF0000",
+                fillOpacity: 0.35,
+            });
+
+            bermudaTriangle.setMap(map);*/
+        }
         </script>
         <?php
     } else {

@@ -204,7 +204,8 @@ if ($_POST) {
             if($countLoopNotChanged == $loopNotChanged){
                 break;
             }
-        }?>
+        }
+        ?>
 
     <div class="row">
             <div class="col-md-12">
@@ -265,11 +266,81 @@ if ($_POST) {
                     </table>
                 </div>
                 <div id="scatter-result"></div>
+                <div id="map"></div>
             </div>
         </div>
 
     <script>
-            Highcharts.chart('scatter-result', {
+        function initMap() {
+            const myLatLng = { lat: -1.625758, lng: -247.777179 };
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 5,
+                center: myLatLng,
+            });
+            <?php
+            foreach ($chartData as $key => $listData) {
+                    ?>
+                    var icon = {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: "<?php echo $colors[$key]?>",
+                        fillOpacity: 1,
+                        strokeWeight: 1
+                    };
+                    var content = '<?php echo "Cluster ". ($key+1);?>';
+                    var title = '<?php echo "Cluster ". ($key+1);?>';
+                    var latlong = { lat: <?php echo $listData['latitude'];?>, lng: <?php echo $listData['longitude'];?> };
+                    addMarker(latlong, map, content, title, icon);
+                    <?php
+                    foreach($listData["data"] as $key1 => $data){
+                        ?>
+                           var icon = {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 5,
+                                fillColor: "<?php echo $colors[$key]?>",
+                                fillOpacity: 0.4,
+                                strokeWeight: 0.4
+                            };
+                            var content = '<?php echo "Data ". ($key+1);?>';
+                            var title = '<?php echo "Data ". ($key+1);?>';
+                            var latlong = { lat: <?php echo $data['x'];?>, lng: <?php echo $data['y'];?> };
+                            addMarker(latlong, map, content, title, icon);
+                        <?php
+                    }
+                ?>
+                <?php
+            }
+            ?>
+        }
+        var mapsmarker;
+        function addMarker(location, map, content, title, icon) {
+            var marker = new google.maps.Marker({
+                position: location,
+                title: title,
+                content: content,
+                icon: icon,
+                map: map
+            });
+            var infowindow = new google.maps.InfoWindow({
+                content: content,
+                position: mapsmarker
+            });
+            marker.addListener('click', function() {
+            // tampilkan info window di atas marker
+                infowindow.open(map, marker);
+            });
+            /*const bermudaTriangle = new google.maps.Polygon({
+                paths: triangleCoords,
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 3,
+                fillColor: "#FF0000",
+                fillOpacity: 0.35,
+            });
+
+            bermudaTriangle.setMap(map);*/
+        }
+        /*    Highcharts.chart('scatter-result', {
             chart: {
                 type: 'scatter',
             },
@@ -322,7 +393,7 @@ if ($_POST) {
                 }
             },
             series: <?php echo json_encode($chartData);?>
-        });
+        });*/
         </script>
         <?php
             insertResult($dataId, $totalCluster, $sumResultDistance, $totalIterasi, "K-Mean");

@@ -23,11 +23,60 @@ function getDataCluster(){
     }
     return $data;
 }
-
-function getChartResult($dataId, $cluster, $type){
+function getDataIterasi(){
     $data = [];
     $conn = connection();
-    $query = mysqli_query($conn, "select * from process where data_id = '$dataId' and cluster ='$cluster' and type='$type'");
+    $query = mysqli_query($conn, "select distinct(iterasi) from process");
+    while ($row = mysqli_fetch_assoc($query)) {
+        $data[] = $row;
+    }
+    return $data;
+}
+function getDataGAP($dataId, $cluster, $iterasi, $type){
+    $data = [];
+    $conn = connection();
+    $query = mysqli_query($conn, "select sum(f_objektif)/count(*) as total_mean, mutation_rate, crossover_rate from process where data_id = '$dataId' and cluster ='$cluster' and iterasi ='$iterasi' and type='$type' group by mutation_rate, crossover_rate");
+    while ($row = mysqli_fetch_assoc($query)) {
+        $data["name"][] = "Mut=".$row['mutation_rate']."  & cross=".$row['crossover_rate'];
+        $data["data"][] = [(double) $row['total_mean']];
+    }
+    return $data;
+}
+function getDataGAPIndividu($dataId, $cluster, $iterasi, $type){
+    $data = [];
+    $conn = connection();
+    $query = mysqli_query($conn, "select sum(f_objektif)/count(*) as total_mean, individu, mutation_rate, crossover_rate from process where data_id = '$dataId' and cluster ='$cluster' and iterasi ='$iterasi' and type='$type' and mutation_rate='0.5' and crossover_rate='0.5' group by individu");
+    while ($row = mysqli_fetch_assoc($query)) {
+        $data["name"][] = $row['individu']." Individu";
+        $data["data"][] = [(double) $row['total_mean']];
+    }
+    return $data;
+}
+function getDataGAPCluster($dataId, $cluster, $iterasi, $type){
+    $data = [];
+    $conn = connection();
+    $query = mysqli_query($conn, "select sum(f_objektif)/count(*) as total_mean, cluster, mutation_rate, crossover_rate from process where data_id = '$dataId' and individu ='30' and iterasi ='$iterasi' and type='$type' and mutation_rate='0.5' and crossover_rate='0.5' group by cluster");
+    while ($row = mysqli_fetch_assoc($query)) {
+        $data["name"][] = $row['cluster']." cluster";
+        $data["data"][] = [(double) $row['total_mean']];
+    }
+    return $data;
+}
+function getDataGAPCompare($dataId, $cluster, $iterasi, $type){
+    $data = [];
+    $conn = connection();
+    $query = mysqli_query($conn, "select sum(f_objektif)/count(*) as total_mean, cluster, iterasi from process where data_id = '$dataId' and iterasi ='$iterasi' and type='$type' group by cluster");
+    while ($row = mysqli_fetch_assoc($query)) {
+        $data["name"][] = $row['cluster'];
+        $data["data"][] = [(double) $row['total_mean']];
+    }
+    return $data;
+}
+
+function getChartResult($dataId, $cluster, $iterasi, $type){
+    $data = [];
+    $conn = connection();
+    $query = mysqli_query($conn, "select * from process where data_id = '$dataId' and cluster ='$cluster' and iterasi ='$iterasi' and type='$type'");
     while ($row = mysqli_fetch_assoc($query)) {
         $data[] = (double)$row["f_objektif"];
     }
@@ -127,6 +176,8 @@ function buildChartGroup($resultDistance, $listCluster)
     foreach ($listCluster as $key => $cluster) {
         $arrData = [];
         $arrData["data"][] = array("selected"=> "true", "x" =>(float)$cluster["latitude"], "y"=> (float)$cluster["longitude"]);
+        $arrData["latitude"] = (float)$cluster["latitude"];
+        $arrData["longitude"] = (float)$cluster["longitude"];
         $j =0;
         foreach ($resultDistance as $result) {
             if ($result["resultCluster"][0] == $key) {
@@ -140,6 +191,17 @@ function buildChartGroup($resultDistance, $listCluster)
     //echo json_encode($series)."<br>";
     return $series;
 }
+/*function buildMapChart($resultDistance, $listCluster)
+{
+    $arrData = [];
+    foreach ($resultDistance as $result) {
+        $arrData[$result["resultCluster"][0]]["result"] = $result["resultCluster"][0];
+        $arrData[$result["resultCluster"][0]]["data"][] = array("x" =>(float)$result["latitude"], "y"=> (float)$result["longitude"]);
+    }
+    //echo json_encode($series)."<br>";
+    return $arrData;
+}*/
+
 function calculateFit($fObjective)
 {
     $result = [];
@@ -247,10 +309,6 @@ function crossOverArithmetic($crossOverRate, $populationData, $bestPopulationDat
             $result["crossoverArithmetic"]["valueCluster"][$i]["longitude"] = $bestPopulationData[$i]["longitude"] * $y1 + $currentPopulation[$i]["longitude"]* $y2;
         }
 
-        $cy1 = $bestPopulationData[1]["latitude"] * $y1 + $currentPopulation[1]["latitude"]* $y2;
-        $cy2 = $bestPopulationData[1]["longitude"] * $y1 + $currentPopulation[1]["longitude"]* $y2;
-
-
         $result["crossoverArithmetic"]["r"] =$r;
         $result["crossoverArithmetic"]["y1"] =$y1;
         $result["crossoverArithmetic"]["y2"] =$y2;
@@ -274,6 +332,56 @@ function regenerateCrossover($totalIndividu, $crossoverRate, $populationData, $b
     }
     return $result;
 }
+function selectionRouletteWheel($totalIndividu, $populationData, $resultRoulete){
+    $result = [];
+    for($i=0;$i<$totalIndividu;$i++){
+        $y1 = randFloat(1, 10, 1);
+        foreach ($resultRoulete["nfnk"] as $key => $nfnk) {
+            if ($nfnk >= $y1) {
+                $candidatePopulation = $key;
+                break 1;
+            }
+        }
+        $result[$i] = $populationData[$candidatePopulation];
+    }
+    return $result;
+
+}
+function crossOverArithmeticGA($dataNeedCrossover, $newPopulationData){
+    $result=$newPopulationData;
+    for($i = 0; $i<count($dataNeedCrossover); $i++){
+        $y1 =randFloat(1, 10, 1);
+        $y2 =1 - $y1;
+        $data1= $dataNeedCrossover[$i];
+        if($i+1 == count($dataNeedCrossover)){
+            $data2 = $dataNeedCrossover[0];
+        }else{
+            $data2 = $dataNeedCrossover[$i+1];
+        }
+        for($j = 0;$j<count($data1);$j++){
+            $result[$data1["key"]][$j]["latitude"] = $data1["value"][$j]["latitude"] * $y1 + $data2["value"][$j]["latitude"]* $y2;
+            $result[$data1["key"]][$j]["longitude"] = $data1["value"][$j]["longitude"] * $y1 + $data2["value"][$j]["longitude"]* $y2;
+        }
+    }
+    return $result;
+}
+function regenerateCrossoverGA($totalIndividu, $crossoverRate, $populationData, $bestPopulationData, $resultRoulete){
+    $result = [];
+    $dataNeedCrossover = [];
+    $newPopulationData = selectionRouletteWheel($totalIndividu, $populationData, $resultRoulete);
+
+    for($i=0;$i<$totalIndividu;$i++){
+        $r = randFloat(1, 10, 1);
+        if ($r < $crossoverRate) {
+            $dataTmp = [];
+            $dataTmp["value"] = $newPopulationData[$i];
+            $dataTmp["key"] = $i;
+            $dataNeedCrossover[] = $dataTmp;
+        }
+    }
+    $result = crossOverArithmeticGA($dataNeedCrossover, $newPopulationData);
+    return $result;
+}
 function mutation($populationData, $totalIndividu, $totalCluster, $mutationRate, $listData){
     $totalMutation = ceil($mutationRate * $totalIndividu);
     for($i=0;$i<$totalMutation;$i++){
@@ -282,8 +390,8 @@ function mutation($populationData, $totalIndividu, $totalCluster, $mutationRate,
     }
     return $populationData;
 }
-function insertResult($dataId, $totalCluster, $sumResultDistance, $iterasi, $type){
+function insertResult($dataId, $totalCluster, $sumResultDistance, $iterasi, $type, $individu=null, $crossoverRate=null, $mutationRate = null, $time = null){
     $conn = connection();
-    $query = mysqli_query($conn, "insert into `process` (data_id, cluster, f_objektif, iterasi,  type, date)
-                                    values ('$dataId','$totalCluster', '$sumResultDistance', '$iterasi', '$type', now())");
+    $query = mysqli_query($conn, "insert into `process` (data_id, cluster, f_objektif, iterasi,  type, individu, mutation_rate, crossover_rate, time, date)
+                                    values ('$dataId','$totalCluster', '$sumResultDistance', '$iterasi', '$type', '$individu', '$mutationRate', '$crossoverRate','$time', now())");
 }

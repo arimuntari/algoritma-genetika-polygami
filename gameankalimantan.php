@@ -1,4 +1,5 @@
 <?php
+$time_start = microtime(true);
 $dataId = $_POST?$_POST["dataId"]:1;
 $totalIndividu = $_POST?$_POST["totalIndividu"]:"";
 $totalCluster = $_POST?$_POST["totalCluster"]:"2";
@@ -164,9 +165,9 @@ if ($_POST) {
     <div id="map"></div>
     <script>
         function initMap() {
-            const myLatLng = { lat: -1.625758, lng: -247.777179 };
+            const myLatLng = { lat: 0.988720, lng: 114.140726 };
             const map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 5,
+                zoom: 6,
                 center: myLatLng,
             });
             <?php
@@ -290,8 +291,11 @@ if ($_POST) {
             series: <?php echo json_encode($chartData);?>
         });
         </script>-->
+
         <?php
-            insertResult($dataId, $totalCluster, $tempObjective, $maxLoop, "GAP", $totalIndividu, $crossoverRate, $mutationRate);
+            $time_end = microtime(true);
+            $execution_time = ($time_end - $time_start);
+            insertResult($dataId, $totalCluster, $tempObjective, $maxLoop, "GAP", $totalIndividu, $crossoverRate, $mutationRate, $execution_time);
         ?>
     <?php
     }
