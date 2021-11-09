@@ -36,10 +36,9 @@ if ($jml > 1) {
                 $f = false;
             }
         }
-        echo "$f<br>";
         if($f){
             $query = mysqli_query($conn, "insert into data_detail (data_id, latitude, longitude) values ('$dataId', '$latitude', '$longitude')");
         }
     }
 }
-//header("Location: index.php?act=data");
+header("Location: index.php?act=data");
